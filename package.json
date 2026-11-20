@@ -1,0 +1,79 @@
+{
+  "name": "mui-alarm-pickers",
+  "version": "0.1.0",
+  "description": "OnePlus-alarm-style scroll-wheel time picker, calendar date/time pickers and weekday selector for MUI X.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ryanholloway/mui-alarm-pickers.git"
+  },
+  "homepage": "https://github.com/ryanholloway/mui-alarm-pickers#readme",
+  "bugs": {
+    "url": "https://github.com/ryanholloway/mui-alarm-pickers/issues"
+  },
+  "keywords": [
+    "mui",
+    "material-ui",
+    "mui-x",
+    "timepicker",
+    "datepicker",
+    "scroll-wheel",
+    "react"
+  ],
+  "sideEffects": false,
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepack": "yarn build"
+  },
+  "peerDependencies": {
+    "@emotion/react": "^11.0.0",
+    "@emotion/styled": "^11.0.0",
+    "@mui/material": "^7.0.0 || ^9.0.0",
+    "@mui/x-date-pickers": "^8.0.0 || ^9.0.0",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/material": "^9.5.0",
+    "@mui/system": "^9.5.0",
+    "@mui/x-date-pickers": "^9.18.0",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^6.6.0",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "dayjs": "^1.11.13",
+    "jsdom": "^25.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
