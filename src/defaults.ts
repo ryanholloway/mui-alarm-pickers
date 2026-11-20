@@ -1,4 +1,4 @@
-import { renderAlarmDateTimeView, renderAlarmTimeView } from './viewRenderers';
+import { renderAlarmDateTimeView, renderAlarmTabbedDateTimeView, renderAlarmTimeView } from './viewRenderers';
 
 const hiddenChrome = { toolbar: { hidden: true }, tabs: { hidden: true } };
 const actions = { actionBar: { actions: ['cancel', 'accept'] as ('cancel' | 'accept')[] } };
@@ -23,6 +23,12 @@ export const alarmDateTimePickerDefaults = {
     minutes: () => null,
   },
   slotProps: { ...hiddenChrome, ...actions },
+};
+
+/** Props for a DateTimePicker with Date / Time tabs (picking a day moves to the Time tab). */
+export const alarmTabbedDateTimePickerDefaults = {
+  ...alarmDateTimePickerDefaults,
+  viewRenderers: { ...alarmDateTimePickerDefaults.viewRenderers, day: renderAlarmTabbedDateTimeView },
 };
 
 /** Props for a calendar-only DatePicker. */

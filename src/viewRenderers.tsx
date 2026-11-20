@@ -1,5 +1,7 @@
 import * as React from 'react';
 import Box from '@mui/material/Box';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import { TimeWheel, type TimeWheelProps, type TimeWheelUnit, type TimeWheelValue } from './TimeWheel';
 import { useAdapter } from './useAdapter';
@@ -65,9 +67,13 @@ function useWheel(props: AlarmViewRendererProps) {
 export function AlarmTimeView(props: AlarmViewRendererProps & { wheelProps?: AlarmWheelProps }) {
   const { ampm, minutesStep, disabled, readOnly, wheelProps } = props;
   const { wheelValue, isTimeDisabled, commit } = useWheel(props);
+  // Follow the LocalizationProvider's locale (dayjs/date-fns/luxon adapters expose a locale string or object).
+  const adapterLocale = (useAdapter() as any).locale;
+  const locale = typeof adapterLocale === 'string' ? adapterLocale : adapterLocale?.code;
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center', py: 2, px: 3 }}>
       <TimeWheel
+        locale={locale}
         {...wheelProps}
         value={wheelValue}
         onChange={commit}
@@ -81,27 +87,86 @@ export function AlarmTimeView(props: AlarmViewRendererProps & { wheelProps?: Ala
   );
 }
 
-export function AlarmDateTimeView(props: AlarmViewRendererProps & { wheelProps?: AlarmWheelProps }) {
+export interface AlarmDateTimeViewOptions {
+  /** Show "Date" / "Time" tabs instead of stacking the calendar over the wheels. Picking a day jumps to the Time tab. */
+  tabbed?: boolean;
+  /** Tab captions when `tabbed`. */
+  tabLabels?: { date?: string; time?: string };
+  wheelProps?: AlarmWheelProps;
+}
+
+export function AlarmDateTimeView(props: AlarmViewRendererProps & AlarmDateTimeViewOptions) {
   const {
     value, referenceDate, onChange, minDate, maxDate, disablePast, disableFuture, shouldDisableDate,
     shouldDisableMonth, shouldDisableYear, showDaysOutsideCurrentMonth, displayWeekNumber, fixedWeekNumber,
     reduceAnimations, slots, slotProps, readOnly, disabled, timezone, dayOfWeekFormatter,
+    tabbed, tabLabels,
   } = props;
+  const [tab, setTab] = React.useState<'date' | 'time'>('date');
+  const id = React.useId();
+
+  const calendar = (
+    <DateCalendar
+      value={value}
+      referenceDate={referenceDate}
+      // Always 'partial': the picker must not auto-advance or close while the user is still choosing a time.
+      onChange={(v) => {
+        onChange(v, 'partial');
+        if (tabbed) setTab('time');
+      }}
+      {...{
+        minDate, maxDate, disablePast, disableFuture, shouldDisableDate, shouldDisableMonth,
+        shouldDisableYear, showDaysOutsideCurrentMonth, displayWeekNumber, fixedWeekNumber,
+        reduceAnimations, slots, slotProps, readOnly, disabled, timezone, dayOfWeekFormatter,
+      }}
+    />
+  );
+
+  if (!tabbed) {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        {calendar}
+        <Box sx={{ width: '100%', borderTop: 1, borderColor: 'divider' }}>
+          <AlarmTimeView {...props} />
+        </Box>
+      </Box>
+    );
+  }
+
+  // Both panels stay laid out in the same grid cell (the inactive one is only `visibility: hidden`) so the
+  // picker keeps a constant size and the wheels' scroll position is set while they have real dimensions.
+  const panel = (name: 'date' | 'time', active: boolean, children: React.ReactNode, center = false) => (
+    <Box
+      role="tabpanel"
+      id={`${id}-panel-${name}`}
+      aria-labelledby={`${id}-tab-${name}`}
+      aria-hidden={!active}
+      sx={{
+        gridArea: '1 / 1',
+        visibility: active ? 'visible' : 'hidden',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: center ? 'center' : 'flex-start',
+      }}
+    >
+      {children}
+    </Box>
+  );
+
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <DateCalendar
-        value={value}
-        referenceDate={referenceDate}
-        // Always 'partial': the picker must not auto-advance or close while the user is still choosing a time.
-        onChange={(v) => onChange(v, 'partial')}
-        {...{
-          minDate, maxDate, disablePast, disableFuture, shouldDisableDate, shouldDisableMonth,
-          shouldDisableYear, showDaysOutsideCurrentMonth, displayWeekNumber, fixedWeekNumber,
-          reduceAnimations, slots, slotProps, readOnly, disabled, timezone, dayOfWeekFormatter,
-        }}
-      />
-      <Box sx={{ width: '100%', borderTop: 1, borderColor: 'divider' }}>
-        <AlarmTimeView {...props} />
+    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+      <Tabs
+        value={tab}
+        onChange={(_, v) => setTab(v)}
+        variant="fullWidth"
+        sx={{ borderBottom: 1, borderColor: 'divider' }}
+      >
+        <Tab value="date" label={tabLabels?.date ?? 'Date'} id={`${id}-tab-date`} aria-controls={`${id}-panel-date`} />
+        <Tab value="time" label={tabLabels?.time ?? 'Time'} id={`${id}-tab-time`} aria-controls={`${id}-panel-time`} />
+      </Tabs>
+      <Box sx={{ display: 'grid' }}>
+        {panel('date', tab === 'date', calendar)}
+        {panel('time', tab === 'time', <AlarmTimeView {...props} />, true)}
       </Box>
     </Box>
   );
@@ -112,3 +177,8 @@ export const renderAlarmTimeView = (props: AlarmViewRendererProps) => <AlarmTime
 
 /** Drop-in for `viewRenderers.day` / `.hours` / `.minutes` (date-time pickers): calendar on top, wheels below. */
 export const renderAlarmDateTimeView = (props: AlarmViewRendererProps) => <AlarmDateTimeView {...props} />;
+
+/** Like `renderAlarmDateTimeView`, with Date / Time tabs; choosing a day moves on to the Time tab. */
+export const renderAlarmTabbedDateTimeView = (props: AlarmViewRendererProps) => (
+  <AlarmDateTimeView {...props} tabbed />
+);

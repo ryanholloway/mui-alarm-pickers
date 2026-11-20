@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import dayjs from 'dayjs';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import Dialog from '@mui/material/Dialog';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { AlarmTimePicker, AlarmDateTimePicker, TimeWheel, WeekdaySelector, withAlarmPickers } from './index';
@@ -72,6 +73,23 @@ describe('TimeWheel', () => {
   });
 });
 
+describe('text overrides / i18n', () => {
+  it('TimeWheel locale formats digits and AM/PM via Intl; explicit meridiemLabels win', () => {
+    const { rerender } = render(<TimeWheel ampm locale="ja" value={{ hours: 7, minutes: 30 }} />);
+    expect(screen.getByRole('option', { name: '午前' })).toBeInTheDocument();
+    rerender(<TimeWheel ampm locale="ar-EG" value={{ hours: 7, minutes: 30 }} />);
+    expect(within(screen.getByRole('listbox', { name: 'Minutes' })).getAllByRole('option', { name: '٣٠' }).length).toBeGreaterThan(0);
+    rerender(<TimeWheel ampm locale="ja" meridiemLabels={{ am: 'Morning', pm: 'Evening' }} value={{ hours: 7, minutes: 30 }} />);
+    expect(screen.getByRole('option', { name: 'Morning' })).toBeInTheDocument();
+  });
+
+  it('TimeWheel labels override the wheel aria-labels', () => {
+    render(<TimeWheel labels={{ hours: 'Stunden', minutes: 'Minuten' }} value={{ hours: 7, minutes: 30 }} />);
+    expect(screen.getByRole('listbox', { name: 'Stunden' })).toBeInTheDocument();
+    expect(screen.getByRole('listbox', { name: 'Minuten' })).toBeInTheDocument();
+  });
+});
+
 describe('MUI X integration', () => {
   const wrap = (ui: React.ReactElement) => (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -99,5 +117,68 @@ describe('MUI X integration', () => {
     const { TimePicker } = await import('@mui/x-date-pickers/TimePicker');
     render(wrap(<TimePicker open value={dayjs('2024-01-01T07:30')} />));
     expect(screen.getByRole('listbox', { name: 'Hours' })).toBeInTheDocument();
+  });
+
+  it('tabbed: starts on Date, moves to Time after a day is picked, and keeps the picked date', () => {
+    const onChange = vi.fn();
+    render(wrap(<AlarmDateTimePicker tabbed open value={dayjs('2024-03-15T07:30')} onChange={onChange} />));
+    expect(screen.getByRole('tab', { name: 'Date' })).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(screen.getByRole('gridcell', { name: '20' }));
+    expect(screen.getByRole('tab', { name: 'Time' })).toHaveAttribute('aria-selected', 'true');
+    expect(onChange.mock.calls.at(-1)![0].format('YYYY-MM-DD HH:mm')).toBe('2024-03-20 07:30');
+    fireEvent.click(within(screen.getByRole('listbox', { name: 'Hours' })).getAllByRole('option', { name: '09' })[0]);
+    expect(onChange.mock.calls.at(-1)![0].format('HH:mm')).toBe('09:30');
+  });
+
+  it('tabbed tabs can be clicked back to Date; default (untabbed) has no tabs', () => {
+    const { unmount } = render(wrap(<AlarmDateTimePicker tabbed open value={dayjs('2024-03-15T07:30')} />));
+    fireEvent.click(screen.getByRole('tab', { name: 'Time' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Date' }));
+    expect(screen.getByRole('tab', { name: 'Date' })).toHaveAttribute('aria-selected', 'true');
+    unmount();
+    render(wrap(<AlarmDateTimePicker open value={dayjs('2024-03-15T07:30')} />));
+    expect(screen.queryByRole('tab')).toBeNull();
+  });
+
+  it('works when the picker popup opens from inside a Dialog', () => {
+    const onChange = vi.fn();
+    render(
+      wrap(
+        <Dialog open>
+          <AlarmTimePicker open value={dayjs('2024-01-01T07:30')} onChange={onChange} />
+        </Dialog>,
+      ),
+    );
+    fireEvent.click(within(screen.getByRole('listbox', { name: 'Minutes' })).getAllByRole('option', { name: '45' })[0]);
+    expect(onChange.mock.calls.at(-1)![0].format('HH:mm')).toBe('07:45');
+  });
+
+  it('tabLabels and wheelProps reach the tabbed picker', () => {
+    render(
+      wrap(
+        <AlarmDateTimePicker
+          tabbed
+          open
+          value={dayjs('2024-03-15T07:30')}
+          tabLabels={{ date: 'Datum', time: 'Zeit' }}
+          wheelProps={{ labels: { hours: 'Stunden' } }}
+        />,
+      ),
+    );
+    expect(screen.getByRole('tab', { name: 'Datum' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'Zeit' }));
+    expect(screen.getByRole('listbox', { name: 'Stunden' })).toBeInTheDocument();
+  });
+
+  it('the pickers follow the LocalizationProvider locale for AM/PM text', async () => {
+    await import('dayjs/locale/ja');
+    render(
+      <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ja">
+        <ThemeProvider theme={withAlarmPickers(createTheme())}>
+          <AlarmTimePicker open ampm value={dayjs('2024-01-01T07:30')} />
+        </ThemeProvider>
+      </LocalizationProvider>,
+    );
+    expect(screen.getByRole('option', { name: '午前' })).toBeInTheDocument();
   });
 });

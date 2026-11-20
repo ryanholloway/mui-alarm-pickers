@@ -183,14 +183,15 @@ export function ScrollWheel<T extends string | number = number>(props: ScrollWhe
       {highlight && (
         <Box
           aria-hidden
+          className="AlarmTimeWheel-highlight"
           sx={(t) => ({
             position: 'absolute',
             left: 0,
             right: 0,
             top: pad,
             height: itemHeight,
-            borderRadius: 3,
-            bgcolor: alpha(t.palette.primary.main, 0.14),
+            borderRadius: 'var(--alarm-wheel-radius, 999px)',
+            bgcolor: `var(--alarm-wheel-highlight-color, ${alpha(t.palette.primary.main, 0.14)})`,
             pointerEvents: 'none',
           })}
         />
